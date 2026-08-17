@@ -6,7 +6,7 @@
 -- Each Joypad slot can have Base, Shift, Ctrl, and Shift+Ctrl assignments.
 
 local ADDON_NAME = "Joypad"
-local VERSION = "0.44.91-p6z17-keybind-icon-cache-fix"
+local VERSION = "0.45.00-p6z20-public-beta-cleanup"
 
 
 -- Blizzard Key Bindings screen labels. CLICK binding globals are stored through _G because the keys contain spaces/colons.
@@ -589,7 +589,7 @@ JOYPAD_LAYOUT_PROFILES.Scuz = {
     raidCursorEnabled = true,
     raidCursorTargetOnMove = true,
     raidCursorAFallback = false,
-    raidCursorLogEnabled = true,
+    raidCursorLogEnabled = false,
     raidCursorHighlightPadding = 3,
     raidCursorHighlightBorderSize = 2,
     raidCursorHighlightAlpha = 0.95,
@@ -597,8 +597,8 @@ JOYPAD_LAYOUT_PROFILES.Scuz = {
     raidCursorShowLabel = false,
     raidTargetSteeringEnabled = true,
     raidTargetSteeringEveryHeal = true,
-    raidTargetSteeringLogEnabled = true,
-    inputLogEnabled = true,
+    raidTargetSteeringLogEnabled = false,
+    inputLogEnabled = false,
     warnMissingKeybinds = true,
     slotEnabled = {
         [1] = true, [2] = true, [3] = true, [4] = true,
@@ -1021,6 +1021,81 @@ local JOYPAD_LAYERS = {
 local JOYPAD_LAYER_INDEX = {}
 for index, layer in ipairs(JOYPAD_LAYERS) do
     JOYPAD_LAYER_INDEX[layer.key] = index
+end
+
+
+-- Public-beta neutral reference profile.  This intentionally contains only
+-- presentation/controller behavior that is safe to assume for a fresh install.
+-- Action-slot contents remain the player's own action bars; optional integrations
+-- (ElvUI/Shifty) and diagnostics are not assumed.
+JOYPAD_LAYOUT_PROFILES.Generic = {
+    name = "Generic",
+    theme = "none",
+    displayMode = "steam",
+    layoutMode = "gamepad",
+    barsVisible = true,
+    hideBlizzardBars = false,
+    hideKeybindText = true,
+    showCooldownText = true,
+    showReadyFlash = true,
+    readyFlashStrength = "medium",
+    readyFlashDuration = "normal",
+    showActiveBorder = true,
+    stanceBarVisible = false,
+    snapToGrid = true,
+    snapToGridThreshold = 10,
+    uiCursorEnabled = true,
+    uiCursorPanelsOnly = true,
+    uiCursorShowPointer = true,
+    uiCursorShowHighlight = true,
+    uiCursorHideHardwareCursor = false,
+    hideMouseWhileMoving = true,
+    smartMouselookEnabled = true,
+    smartMouselookOnMove = true,
+    smartMouselookOnTarget = true,
+    smartMouselookOnSpell = true,
+    smartMouselookOnNPC = false,
+    smartMouselookOnQuest = true,
+    smartMouselookOnLoot = true,
+    smartMouselookOnJump = false,
+    smartMouselookOnCenter = false,
+    smartMouselookCenterScale = 100,
+    smartMouselookCenterDelay = "normal",
+    smartMouselookCenterPreview = false,
+    smartMouselookBlocker = true,
+    smartMouselookForceTooltip = false,
+    smartMouselookTooltipAnchor = "topright",
+    smartMouselookMouseoverHint = false,
+    smartMouselookPreferAwesomeTarget = true,
+    smartMouselookUseSelectedTarget = true,
+    smartMouselookTestTooltip = false,
+    smartMouselookPauseOnModifier = true,
+    raidCursorEnabled = true,
+    raidCursorTargetOnMove = true,
+    raidCursorAFallback = false,
+    raidCursorLogEnabled = false,
+    raidTargetSteeringEnabled = true,
+    raidTargetSteeringEveryHeal = true,
+    raidTargetSteeringLogEnabled = false,
+    inputLogEnabled = false,
+    warnMissingKeybinds = true,
+}
+for i = 1, 24 do
+    JOYPAD_LAYOUT_PROFILES.Generic.slotEnabled = JOYPAD_LAYOUT_PROFILES.Generic.slotEnabled or {}
+    JOYPAD_LAYOUT_PROFILES.Generic.slotEnabled[i] = true
+    JOYPAD_LAYOUT_PROFILES.Generic.positions = JOYPAD_LAYOUT_PROFILES.Generic.positions or {}
+    JOYPAD_LAYOUT_PROFILES.Generic.positions[i] = {
+        x = JOYPAD_DEFAULT_SLOT_POSITIONS[i].x,
+        y = JOYPAD_DEFAULT_SLOT_POSITIONS[i].y,
+    }
+    JOYPAD_LAYOUT_PROFILES.Generic.scales = JOYPAD_LAYOUT_PROFILES.Generic.scales or {}
+    JOYPAD_LAYOUT_PROFILES.Generic.scales[i] = JOYPAD_DEFAULT_SLOT_SCALES[i]
+    JOYPAD_LAYOUT_PROFILES.Generic.altTextScales = JOYPAD_LAYOUT_PROFILES.Generic.altTextScales or {}
+    JOYPAD_LAYOUT_PROFILES.Generic.altTextScales[i] = DEFAULT_ALT_TEXT_SCALES[i] or 100
+end
+JOYPAD_LAYOUT_PROFILES.Generic.diamondSlots = {}
+for slot, enabled in pairs(JOYPAD_DEFAULT_DIAMOND_SLOTS or {}) do
+    if enabled then JOYPAD_LAYOUT_PROFILES.Generic.diamondSlots[slot] = true end
 end
 
 local function ActionAssignment(actionSlot)
@@ -2471,10 +2546,45 @@ function JoypadApplyDisplayModeSlotVisibility()
     end
 end
 
+local function JoypadEnsureInternalDB()
+    if type(JoypadDB) ~= "table" then JoypadDB = {} end
+    if type(JoypadDB._internal) ~= "table" then JoypadDB._internal = {} end
+    if type(JoypadDB._internal.migrations) ~= "table" then JoypadDB._internal.migrations = {} end
+    JoypadDB._internal.schema = 1
+    return JoypadDB._internal
+end
+
+local function JoypadMigrationDone(key)
+    local internal = JoypadEnsureInternalDB()
+    return internal.migrations[tostring(key or "")] == true
+end
+
+local function JoypadMarkMigrationDone(key)
+    local internal = JoypadEnsureInternalDB()
+    internal.migrations[tostring(key or "")] = true
+end
+
+local function JoypadSetDiagnosticsEnabled(enabled, clearStored)
+    if type(JoypadDB) ~= "table" then JoypadDB = {} end
+    enabled = enabled and true or false
+    JoypadDB.inputLogEnabled = enabled
+    JoypadDB.raidCursorLogEnabled = enabled
+    JoypadDB.raidTargetSteeringLogEnabled = enabled
+    JoypadDB.uiCursorDebugEnabled = enabled
+    JoypadDB.uiCursorDebugChat = enabled
+    if clearStored then
+        JoypadDB.inputLog = {}
+        JoypadDB.inputLogMeta = {}
+        JoypadDB.raidCursorLog = {}
+    end
+end
+
 local function EnsureDB()
     if type(JoypadDB) ~= "table" then
         JoypadDB = {}
     end
+
+    JoypadEnsureInternalDB()
 
     if JoypadDB.barsVisible == nil then
         JoypadDB.barsVisible = true
@@ -2509,7 +2619,10 @@ local function EnsureDB()
     end
 
     if JoypadDB.shiftySuggestionHighlights == nil then
-        JoypadDB.shiftySuggestionHighlights = true
+        -- Public-beta baseline: Shifty is an optional integration.  Fresh
+        -- installs do not assume it is present; existing profiles retain their
+        -- explicit choice.
+        JoypadDB.shiftySuggestionHighlights = false
     end
 
     if JoypadDB.layoutMode ~= "desktop" and JoypadDB.layoutMode ~= "gamepad" then
@@ -2567,7 +2680,7 @@ local function EnsureDB()
     if JoypadDB.smartMouselookBlocker == nil then JoypadDB.smartMouselookBlocker = true end
     if JoypadDB.smartMouselookForceTooltip == nil then JoypadDB.smartMouselookForceTooltip = false end
     if JoypadDB.smartMouselookTooltipAnchor ~= "cursor" and JoypadDB.smartMouselookTooltipAnchor ~= "elvui" and JoypadDB.smartMouselookTooltipAnchor ~= "manual" and JoypadDB.smartMouselookTooltipAnchor ~= "topright" then
-        JoypadDB.smartMouselookTooltipAnchor = "elvui"
+        JoypadDB.smartMouselookTooltipAnchor = "topright"
     end
     if JoypadDB.smartMouselookTooltipPoint == nil then JoypadDB.smartMouselookTooltipPoint = "TOPRIGHT" end
     if JoypadDB.smartMouselookTooltipRelativePoint == nil then JoypadDB.smartMouselookTooltipRelativePoint = "TOPRIGHT" end
@@ -2593,7 +2706,7 @@ local function EnsureDB()
     if JoypadDB.raidCursorEnabled == nil then JoypadDB.raidCursorEnabled = true end
     if JoypadDB.raidCursorTargetOnMove == nil then JoypadDB.raidCursorTargetOnMove = true end
     if JoypadDB.raidCursorAFallback == nil then JoypadDB.raidCursorAFallback = false end
-    if JoypadDB.raidCursorLogEnabled == nil then JoypadDB.raidCursorLogEnabled = true end
+    if JoypadDB.raidCursorLogEnabled == nil then JoypadDB.raidCursorLogEnabled = false end
     JoypadDB.raidCursorHighlightPadding = tonumber(JoypadDB.raidCursorHighlightPadding or 3) or 3
     JoypadDB.raidCursorHighlightBorderSize = tonumber(JoypadDB.raidCursorHighlightBorderSize or 2) or 2
     JoypadDB.raidCursorHighlightAlpha = tonumber(JoypadDB.raidCursorHighlightAlpha or 0.95) or 0.95
@@ -2601,13 +2714,12 @@ local function EnsureDB()
     if JoypadDB.raidCursorShowLabel == nil then JoypadDB.raidCursorShowLabel = false end
     if JoypadDB.raidTargetSteeringEnabled == nil then JoypadDB.raidTargetSteeringEnabled = true end
     if JoypadDB.raidTargetSteeringEveryHeal == nil then JoypadDB.raidTargetSteeringEveryHeal = true end
-    if JoypadDB.raidTargetSteeringLogEnabled == nil then JoypadDB.raidTargetSteeringLogEnabled = true end
+    if JoypadDB.raidTargetSteeringLogEnabled == nil then JoypadDB.raidTargetSteeringLogEnabled = false end
     JoypadDB.raidCursorLog = JoypadDB.raidCursorLog or {}
     if JoypadDB.raidCursorAutoRaid04475 ~= true then
         JoypadDB.raidCursorEnabled = true
         JoypadDB.raidCursorTargetOnMove = true
         JoypadDB.raidCursorAFallback = false
-        JoypadDB.raidCursorLogEnabled = true
         JoypadDB.raidCursorAutoRaid04475 = true
     end
     if JoypadDB.raidCursorNoASteal04478 ~= true then
@@ -2625,7 +2737,6 @@ local function EnsureDB()
     if JoypadDB.raidTargetSteering04481 ~= true then
         JoypadDB.raidTargetSteeringEnabled = true
         JoypadDB.raidTargetSteeringEveryHeal = true
-        JoypadDB.raidTargetSteeringLogEnabled = true
         JoypadDB.raidTargetSteering04481 = true
     end
 
@@ -2645,7 +2756,7 @@ local function EnsureDB()
     end
 
     if JoypadDB.uiCursorDebugChat == nil then
-        JoypadDB.uiCursorDebugChat = true
+        JoypadDB.uiCursorDebugChat = false
     end
 
     if JoypadDB.showAltScaleControls == nil then
@@ -2797,7 +2908,7 @@ local function EnsureDB()
     end
 
     if JoypadDB.inputLogEnabled == nil then
-        JoypadDB.inputLogEnabled = true
+        JoypadDB.inputLogEnabled = false
     end
     if type(JoypadDB.inputLog) ~= "table" then
         JoypadDB.inputLog = {}
@@ -2805,6 +2916,14 @@ local function EnsureDB()
     if type(JoypadDB.inputLogMeta) ~= "table" then
         JoypadDB.inputLogMeta = {}
     end
+    -- p6z20 public-beta SavedVariables cleanup.  Diagnostics used during
+    -- development are opt-in now.  This deliberately does not touch gameplay,
+    -- layout, ElvUI, Shifty, Smart Mouselook, raid cursor, or binding choices.
+    if not JoypadMigrationDone("publicBetaDiagnosticsP6z20") then
+        JoypadSetDiagnosticsEnabled(false, true)
+        JoypadMarkMigrationDone("publicBetaDiagnosticsP6z20")
+    end
+
     if JoypadDB.warnMissingKeybinds == nil then
         JoypadDB.warnMissingKeybinds = true
     end
@@ -11009,7 +11128,7 @@ end
 function Joypad:GetSmartMouselookTooltipAnchorValues()
     EnsureDB()
 
-    local mode = tostring(JoypadDB.smartMouselookTooltipAnchor or "elvui")
+    local mode = tostring(JoypadDB.smartMouselookTooltipAnchor or "topright")
     local point = tostring(JoypadDB.smartMouselookTooltipPoint or "TOPRIGHT")
     local relativePoint = tostring(JoypadDB.smartMouselookTooltipRelativePoint or "TOPRIGHT")
     local x = tonumber(JoypadDB.smartMouselookTooltipX or -230) or -230
@@ -13259,7 +13378,7 @@ function Joypad:BuildAceOptionsTable()
                     reset = { type = "execute", name = "Reset Joypad", order = 14, func = function() Joypad:ConfirmResetAddonSettings() end },
                     centre = { type = "execute", name = "Centre Joypad on screen", order = 15, func = function() Joypad:ConfirmCenterJoypadLayout() end },
                     diagnostics = { type = "header", name = "Input diagnostics", order = 16 },
-                    inputLogEnabled = { type = "toggle", name = "Save last 200 button inputs", desc = "Stores recent Joypad button presses and what Joypad expected them to do in JoypadDB.inputLog, so you can upload the SavedVariables file for debugging.", order = 17, get = getBool("inputLogEnabled", true), set = function(info, value) EnsureDB(); JoypadDB.inputLogEnabled = value and true or false; Joypad:NotifyAceOptionsChanged() end },
+                    inputLogEnabled = { type = "toggle", name = "Save last 200 button inputs", desc = "Stores recent Joypad button presses and what Joypad expected them to do in JoypadDB.inputLog, so you can upload the SavedVariables file for debugging.", order = 17, get = getBool("inputLogEnabled", false), set = function(info, value) EnsureDB(); JoypadDB.inputLogEnabled = value and true or false; Joypad:NotifyAceOptionsChanged() end },
                     warnMissingKeybinds = { type = "toggle", name = "Warn about missing Joypad keybinds", desc = "After login, checks enabled Joypad buttons and prints a warning if WoW's Key Bindings are missing any Joypad rows.", order = 18, get = getBool("warnMissingKeybinds", true), set = function(info, value) EnsureDB(); JoypadDB.warnMissingKeybinds = value and true or false; Joypad:NotifyAceOptionsChanged() end },
                     checkKeybinds = { type = "execute", name = "Check Joypad keybinds now", desc = "Checks enabled Joypad buttons and prints any missing physical keybinds.", order = 19, func = function() Joypad:CheckMissingPhysicalKeybinds(false) end },
                     inputDebug = { type = "execute", name = "Print input debug", desc = "Runs /joypad inputdebug and prints expected physical keys, bindings, and base assignments.", order = 20, func = function() Joypad:DebugInputBindings() end },
@@ -13342,7 +13461,7 @@ function Joypad:BuildAceOptionsTable()
                     smartMouselookEnabled = { type = "toggle", name = "Enable Smart mouselook", desc = "ConsolePort-style lite mouselook. Starts WoW mouselook for selected controller/gameplay events so the mouse cursor disappears and camera control feels native.", order = 8, get = getBool("smartMouselookEnabled", true), set = function(info, value) Joypad:SetSmartMouselookEnabled(value, false) end },
                     smartMouselookBlocker = { type = "toggle", name = "Block accidental UI clicks during mouselook", order = 9, get = getBool("smartMouselookBlocker", true), set = function(info, value) EnsureDB(); JoypadDB.smartMouselookBlocker = value and true or false; if not value then Joypad:HideSmartMouselookBlocker() end; Joypad:NotifyAceOptionsChanged() end },
                     smartMouselookForceTooltip = { type = "toggle", name = "Show Blizzard target tooltip", desc = "While Smart mouselook is active, shows the normal Blizzard GameTooltip for the current Joypad target source. With selected-target fallback enabled, this uses the normal target unit.", order = 9.2, get = getBool("smartMouselookForceTooltip", false), set = function(info, value) Joypad:SetSmartMouselookForceTooltip(value, false); Joypad:NotifyAceOptionsChanged() end },
-                    smartMouselookTooltipAnchor = { type = "select", name = "Blizzard tooltip position", desc = "Where Joypad places the Blizzard tooltip while Smart mouselook is active.", values = { cursor = "Cursor", elvui = "ElvUI tooltip mover / near minimap", topright = "Top right near minimap", manual = "Manual top-right offset" }, order = 9.21, get = function() EnsureDB(); return JoypadDB.smartMouselookTooltipAnchor or "elvui" end, set = function(info, value) Joypad:SetSmartMouselookTooltipAnchor(value, false); Joypad:NotifyAceOptionsChanged() end },
+                    smartMouselookTooltipAnchor = { type = "select", name = "Blizzard tooltip position", desc = "Where Joypad places the Blizzard tooltip while Smart mouselook is active.", values = { cursor = "Cursor", elvui = "ElvUI tooltip mover / near minimap", topright = "Top right near minimap", manual = "Manual top-right offset" }, order = 9.21, get = function() EnsureDB(); return JoypadDB.smartMouselookTooltipAnchor or "topright" end, set = function(info, value) Joypad:SetSmartMouselookTooltipAnchor(value, false); Joypad:NotifyAceOptionsChanged() end },
                     smartMouselookTooltipX = { type = "range", name = "Tooltip X offset", desc = "Manual tooltip X offset from the top-right of ElvUIParent/UIParent.", min = -1000, max = 1000, step = 1, order = 9.22, get = function() EnsureDB(); return tonumber(JoypadDB.smartMouselookTooltipX or -230) or -230 end, set = function(info, value) Joypad:SetSmartMouselookTooltipOffset(value, JoypadDB.smartMouselookTooltipY, true); Joypad:NotifyAceOptionsChanged() end },
                     smartMouselookTooltipY = { type = "range", name = "Tooltip Y offset", desc = "Manual tooltip Y offset from the top-right of ElvUIParent/UIParent.", min = -1000, max = 1000, step = 1, order = 9.23, get = function() EnsureDB(); return tonumber(JoypadDB.smartMouselookTooltipY or -4) or -4 end, set = function(info, value) Joypad:SetSmartMouselookTooltipOffset(JoypadDB.smartMouselookTooltipX, value, true); Joypad:NotifyAceOptionsChanged() end },
                     smartMouselookMouseoverHint = { type = "toggle", name = "Show Joypad debug target hint", desc = "Optional debug overlay. Leave this off now that the normal Blizzard target tooltip works.", order = 9.3, get = getBool("smartMouselookMouseoverHint", false), set = function(info, value) Joypad:SetSmartMouselookMouseoverHint(value, false); Joypad:NotifyAceOptionsChanged() end },
@@ -13354,7 +13473,7 @@ function Joypad:BuildAceOptionsTable()
                     raidCursorEnabled = { type = "toggle", name = "Enable Raid Cursor in raids", desc = "Prototype: when you are in a raid, Joypad redirects the left trackpad/D-pad party-target keys into a ConsolePort-style secure raid frame cursor.", order = 9.61, get = getBool("raidCursorEnabled", true), set = function(info, value) Joypad:SetRaidCursorEnabled(value, false) end },
                     raidCursorTargetOnMove = { type = "toggle", name = "Target on move", desc = "D-pad/left trackpad movement targets the highlighted raid frame immediately. If this is disabled, A targets the highlighted frame instead.", order = 9.62, get = getBool("raidCursorTargetOnMove", true), set = function(info, value) Joypad:SetRaidCursorTargetOnMove(value, false) end },
                     raidCursorAFallback = { type = "toggle", name = "A / Jump fallback target", desc = "Optional emergency/debug fallback. Leave this off if target-on-move works, so A remains normal Jump in raids.", order = 9.63, get = getBool("raidCursorAFallback", false), set = function(info, value) Joypad:SetRaidCursorAFallback(value, false) end },
-                    raidCursorLogEnabled = { type = "toggle", name = "Log Raid Cursor diagnostics", desc = "Stores raid cursor input/selection/targeting events in JoypadDB and sends them to ShiftyLogs if installed.", order = 9.64, get = getBool("raidCursorLogEnabled", true), set = function(info, value) EnsureDB(); JoypadDB.raidCursorLogEnabled = value and true or false; Joypad:NotifyAceOptionsChanged() end },
+                    raidCursorLogEnabled = { type = "toggle", name = "Log Raid Cursor diagnostics", desc = "Stores raid cursor input/selection/targeting events in JoypadDB and sends them to ShiftyLogs if installed.", order = 9.64, get = getBool("raidCursorLogEnabled", false), set = function(info, value) EnsureDB(); JoypadDB.raidCursorLogEnabled = value and true or false; Joypad:NotifyAceOptionsChanged() end },
                     raidCursorHighlightPadding = { type = "range", name = "Raid highlight padding", desc = "Extra space around the selected ElvUI raid frame.", min = 0, max = 20, step = 1, order = 9.641, get = function() EnsureDB(); return tonumber(JoypadDB.raidCursorHighlightPadding or 3) or 3 end, set = function(info, value) EnsureDB(); JoypadDB.raidCursorHighlightPadding = tonumber(value) or 3; Joypad:ApplyRaidCursorHighlightStyle(); Joypad:NotifyAceOptionsChanged() end },
                     raidCursorHighlightBorderSize = { type = "range", name = "Raid highlight border size", desc = "Thickness of the ElvUI-style raid cursor border.", min = 1, max = 8, step = 1, order = 9.642, get = function() EnsureDB(); return tonumber(JoypadDB.raidCursorHighlightBorderSize or 2) or 2 end, set = function(info, value) EnsureDB(); JoypadDB.raidCursorHighlightBorderSize = tonumber(value) or 2; Joypad:ApplyRaidCursorHighlightStyle(); Joypad:NotifyAceOptionsChanged() end },
                     raidCursorHighlightAlpha = { type = "range", name = "Raid highlight opacity", desc = "Opacity of the raid cursor border.", min = 0.1, max = 1, step = 0.05, order = 9.643, get = function() EnsureDB(); return tonumber(JoypadDB.raidCursorHighlightAlpha or 0.95) or 0.95 end, set = function(info, value) EnsureDB(); JoypadDB.raidCursorHighlightAlpha = tonumber(value) or 0.95; Joypad:ApplyRaidCursorHighlightStyle(); Joypad:NotifyAceOptionsChanged() end },
@@ -13362,7 +13481,7 @@ function Joypad:BuildAceOptionsTable()
                     raidCursorShowLabel = { type = "toggle", name = "Show raid cursor label", desc = "Optional debug label. Off by default so the highlight stays clean on ElvUI raid frames.", order = 9.645, get = getBool("raidCursorShowLabel", false), set = function(info, value) EnsureDB(); JoypadDB.raidCursorShowLabel = value and true or false; Joypad:ApplyRaidCursorHighlightStyle(); Joypad:UpdateRaidCursorText(Joypad.raidCursor and Joypad.raidCursor.GetAttribute and Joypad.raidCursor:GetAttribute("cursorunit") or nil); Joypad:NotifyAceOptionsChanged() end },
                     raidTargetSteeringEnabled = { type = "toggle", name = "Shifty raid target steering", desc = "In raids, Shifty healing suggestions steer the Raid Cursor first. The main Joypad cue becomes the next direction until the requested heal target is selected.", order = 9.646, get = getBool("raidTargetSteeringEnabled", true), set = function(info, value) EnsureDB(); JoypadDB.raidTargetSteeringEnabled = value and true or false; Joypad:NotifyAceOptionsChanged() end },
                     raidTargetSteeringEveryHeal = { type = "toggle", name = "Steer every raid heal", desc = "Treat every raid healing suggestion as target-first. If off, only urgent/emergency target takeover cues steer.", order = 9.647, get = getBool("raidTargetSteeringEveryHeal", true), set = function(info, value) EnsureDB(); JoypadDB.raidTargetSteeringEveryHeal = value and true or false; Joypad:NotifyAceOptionsChanged() end },
-                    raidTargetSteeringLogEnabled = { type = "toggle", name = "Log raid target steering", desc = "Log Shifty-to-Joypad raid target steering path decisions.", order = 9.648, get = getBool("raidTargetSteeringLogEnabled", true), set = function(info, value) EnsureDB(); JoypadDB.raidTargetSteeringLogEnabled = value and true or false; Joypad:NotifyAceOptionsChanged() end },
+                    raidTargetSteeringLogEnabled = { type = "toggle", name = "Log raid target steering", desc = "Log Shifty-to-Joypad raid target steering path decisions.", order = 9.648, get = getBool("raidTargetSteeringLogEnabled", false), set = function(info, value) EnsureDB(); JoypadDB.raidTargetSteeringLogEnabled = value and true or false; Joypad:NotifyAceOptionsChanged() end },
                     raidCursorStatus = { type = "execute", name = "Print Raid Cursor status", order = 9.65, func = function() Joypad:PrintRaidCursorStatus() end },
                     smartMove = { type = "toggle", name = "Starting to move / turn / strafe", order = 10, get = getBool("smartMouselookOnMove", true), set = function(info, value) Joypad:SetSmartMouselookTrigger("move", value, true); Joypad:NotifyAceOptionsChanged() end },
                     smartTarget = { type = "toggle", name = "Changing target", order = 11, get = getBool("smartMouselookOnTarget", true), set = function(info, value) Joypad:SetSmartMouselookTrigger("target", value, true); Joypad:NotifyAceOptionsChanged() end },
@@ -13385,7 +13504,8 @@ function Joypad:BuildAceOptionsTable()
                 order = 7,
                 args = {
                     intro = { type = "description", name = "Built-in layout profiles. Applying a profile changes layout, visibility, display mode, and related Joypad settings.", order = 1, width = "full" },
-                    scuz = { type = "execute", name = "Apply Scuz profile", desc = "Applies the saved Scuz layout, scale, Touch Bar, diamonds, visibility, and pet utility assignment profile.", order = 2, func = function() Joypad:ConfirmApplyLayoutProfile("Scuz") end },
+                    generic = { type = "execute", name = "Apply Generic profile", desc = "Applies Joypad's neutral public-beta controller/layout defaults without assuming ElvUI, Shifty, or diagnostic logging.", order = 1.9, func = function() Joypad:ConfirmApplyLayoutProfile("Generic") end },
+                    scuz = { type = "execute", name = "Apply Scuz / Stream profile", desc = "Applies the personal reference layout used during Joypad development. This is not the public default.", order = 2, func = function() Joypad:ConfirmApplyLayoutProfile("Scuz") end },
                 },
             },
         },
@@ -15730,6 +15850,44 @@ SlashCmdList.JOYPAD = function(msg)
 
     if msg == "debug" or msg == "dump" or msg == "layout" then
         Joypad:DebugDumpSlotLayout()
+        return
+    end
+
+    if msg == "generic" or msg == "profile generic" then
+        Joypad:ApplyLayoutProfile("Generic", false)
+        return
+    end
+
+    if msg == "diagnostics on" or msg == "diag on" then
+        EnsureDB()
+        JoypadSetDiagnosticsEnabled(true, false)
+        Print("diagnostic logging enabled (input, raid cursor/steering, UI cursor debug).")
+        return
+    end
+
+    if msg == "diagnostics off" or msg == "diag off" then
+        EnsureDB()
+        JoypadSetDiagnosticsEnabled(false, false)
+        Print("diagnostic logging disabled.")
+        return
+    end
+
+    if msg == "diagnostics clear" or msg == "diag clear" then
+        EnsureDB()
+        JoypadSetDiagnosticsEnabled(false, true)
+        Print("diagnostic logging disabled and stored Joypad diagnostic logs cleared.")
+        return
+    end
+
+    if msg == "status" then
+        EnsureDB()
+        local awesome = C_NamePlate and type(C_NamePlate.GetNamePlates) == "function"
+        local interact = type(QueueInteract) == "function"
+        local profile = tostring(JoypadDB.activeProfile or "Custom/default")
+        local shifty = type(_G.ShiftyAPI) == "table" or type(_G.Shifty) == "table"
+        local elvui = type(_G.ElvUI) == "table"
+        Print("v" .. tostring(VERSION) .. " | profile=" .. profile .. " | class=" .. tostring(select(2, UnitClass("player")) or "?") .. " | AwesomeWotLK=" .. (awesome and "yes" or "no") .. " | QueueInteract=" .. (interact and "yes" or "no"))
+        Print("SmartMouselook=" .. (JoypadDB.smartMouselookEnabled ~= false and "on" or "off") .. " | UI Cursor=" .. (JoypadDB.uiCursorEnabled ~= false and "on" or "off") .. " | ElvUI=" .. (elvui and "yes" or "no") .. " | Shifty=" .. (shifty and "yes" or "no") .. " | diagnostics=" .. ((JoypadDB.inputLogEnabled or JoypadDB.raidCursorLogEnabled or JoypadDB.raidTargetSteeringLogEnabled or JoypadDB.uiCursorDebugEnabled) and "on" or "off"))
         return
     end
 

@@ -1,0 +1,43 @@
+Joypad 0.45.00-p6z20-public-beta-cleanup
+
+Purpose
+-------
+First cleanup pass toward a small public/stream tester beta.  Existing gameplay,
+layout, Smart Mouselook, binding and integration choices are preserved on upgrade.
+Fresh installs no longer assume ElvUI, Shifty or development logging.
+
+Fresh-install baseline
+----------------------
+- Theme: none
+- Smart Mouselook tooltip anchor: top-right
+- Shifty suggestion highlights: off until explicitly enabled
+- Input / Raid Cursor / raid steering / UI Cursor diagnostic logging: off
+- AwesomeWotLK support remains the preferred controller-client integration path
+
+Existing-profile cleanup
+------------------------
+On first load of p6z20, stored development diagnostics are disabled and the saved
+input/raid diagnostic logs are cleared.  Gameplay/layout settings are not reset.
+The migration marker is stored under JoypadDB._internal.migrations as the beginning
+of separating internal metadata from user-facing configuration.
+
+Profiles
+--------
+- Generic: neutral public-beta layout/reference profile
+- Scuz / Stream: personal development/reference profile; not the public default
+
+Useful commands
+---------------
+/joypad status
+/joypad diagnostics on
+/joypad diagnostics off
+/joypad diagnostics clear
+/joypad profile generic
+/joypad profile scuz
+
+Notes
+-----
+This is still a development build, not a general 1.0 release.  Class/action bar
+contents remain the player's own WoW action slots.  Optional integrations should
+be treated as optional, and public beta testers should include /joypad status with
+bug reports where possible.
