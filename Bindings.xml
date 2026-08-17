@@ -1,0 +1,50 @@
+<Bindings>
+    <Binding name="CLICK JoypadButton1:LeftButton" header="JOYPAD">
+    </Binding>
+    <Binding name="CLICK JoypadButton2:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton3:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton4:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton5:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton6:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton7:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton8:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton9:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton10:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton11:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton12:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton13:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton14:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton15:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton16:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton17:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton18:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton19:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton20:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton21:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton22:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton23:LeftButton">
+    </Binding>
+    <Binding name="CLICK JoypadButton24:LeftButton">
+    </Binding>
+</Bindings>
